@@ -43,10 +43,10 @@ export type ProductInfo = {
 	Updated: string,
 }
 
-export type ReceiptInfo = {
+export type GiftReceiptInfo = {
 	PurchaseId: number, --A unique identifier for the specific purchase.
-	PlayerId: number, --The user ID of the user who made the purchase OR the user ID of the user who received a gift.
-	PlayerPurchasedId: number, --This user ID of the user who purchased.
+	PlayerId: number, --The user ID of the user who received the gift.
+	PlayerPurchasedId: number, --The user ID of the user who purchased.
 	ProductId: number, --The ID of the purchased product.
 	PlaceIdWherePurchased: number, --The place ID in which the purchase was made. Depending on where the user is during gameplay, the purchase place's ID can be the same as or different from the current place's ID.
 	CurrencySpent: number, --The amount of currency spent in the transaction.
@@ -61,7 +61,8 @@ type GamePassGifted = {
 	ConnectParallel: (self: GamePassGifted, (player: Player, playerGiftedId: number, gamePassId: number) -> ()) -> RBXScriptConnection
 }
 
---the icon pulls from gift product but name pulls from normal product
+--[[Prompts the Product gifting gui to the given <strong>player</strong>.
+<strong>productId</strong> should not the the ProductId of the gift product.]]
 function GiftService:PromptProductGift(player: Player, productId: number)
 	if player:GetAttribute("Gifting_CurrentGiftId") or player:GetAttribute("Gifting_InPurchase") then return end
 	
@@ -73,6 +74,8 @@ function GiftService:PromptProductGift(player: Player, productId: number)
 	end
 end
 
+--[[Prompts the GamePass gifting gui to the given <strong>player</strong>.
+<strong>productId</strong> should not the the GamePassId of the gift product.]]
 function GiftService:PromptGamePassGift(player: Player, gamePassId: number)
 	if player:GetAttribute("Gifting_CurrentGiftId") or player:GetAttribute("Gifting_InPurchase") then return end
 	
@@ -91,6 +94,7 @@ function GiftService:PromptGamePassGift(player: Player, gamePassId: number)
 	end
 end
 
+--[[Checks if the given <strong>assetId</strong> has an associated GiftId.]]
 function GiftService:HasGiftId(assetId: number, infoType: Enum.InfoType): boolean
 	assert(assetId, "Argument 1 is nil")
 	assert(infoType == Enum.InfoType.Product or infoType == Enum.InfoType.GamePass, "InfoType must be Product or GamePass")
@@ -102,6 +106,7 @@ function GiftService:HasGiftId(assetId: number, infoType: Enum.InfoType): boolea
 	return false
 end
 
+--[[Checks if <strong>assetId</strong> is a <strong>GiftId</strong>.]]
 function GiftService:IsGiftId(assetId: number, infoType: Enum.InfoType): boolean
 	assert(assetId, "Argument 1 is nil")
 	assert(infoType == Enum.InfoType.Product or infoType == Enum.InfoType.GamePass, "InfoType must be Product or GamePass")
@@ -117,12 +122,16 @@ local function getGiftId(assetId: number, infoType: Enum.InfoType): number?
 	return Settings[infoType.Name.. "GiftIds"][assetId]
 end
 
-function GiftService:GetProductGiftId(productId: number)
+--[[Returns the <strong>GiftId</strong> for <strong>productId</strong>.
+Returns <strong>nil</strong> if no <strong>GiftId</strong> is found.]]
+function GiftService:GetProductGiftId(productId: number): number?
 	assert(productId, "Argument 1 is nil")
 	return getGiftId(productId, Enum.InfoType.Product)
 end
 
-function GiftService:GetGamePassGiftId(gamePassId: number)
+--[[Returns the <strong>GiftId</strong> for <strong>gamePassId</strong>.
+Returns <strong>nil</strong> if no <strong>GiftId</strong> is found.]]
+function GiftService:GetGamePassGiftId(gamePassId: number): number?
 	assert(gamePassId, "Argument 1 is nil")
 	return getGiftId(gamePassId, Enum.InfoType.GamePass)
 end
@@ -135,14 +144,18 @@ local function getAssetId(giftId: number, infoType: Enum.InfoType): number?
 	end
 end
 
-function GiftService:GetGamePassIdFromGiftId(giftId: number) --add support for products
-	assert(giftId, "Argument 1 is nil")
-	return getAssetId(giftId, Enum.InfoType.GamePass)
-end
-
+--[[Returns the <strong>ProductId</strong> associated with <strong>giftId</strong>.
+Returns <strong>nil</strong> if no <strong>ProductId</strong> is found.]]
 function GiftService:GetProductIdFromGiftId(giftId: number)
 	assert(giftId, "Argument 1 is nil")
 	return getAssetId(giftId, Enum.InfoType.Product)
+end
+
+--[[Returns the <strong>GamePassId</strong> associated with <strong>giftId</strong>.
+Returns <strong>nil</strong> if no <strong>GamePassId</strong> is found.]]
+function GiftService:GetGamePassIdFromGiftId(giftId: number)
+	assert(giftId, "Argument 1 is nil")
+	return getAssetId(giftId, Enum.InfoType.GamePass)
 end
 
 --Handles PromptProductGift and PromptGamePassGift being fired from the client
@@ -151,7 +164,7 @@ if IsServer then
 	local profileStore = DataSaveService:GetProfileStore()
 	DataSaveService:AddToTemplate("Gifting_OwnedGamepasses", {})
 	
-	local function convertReceiptInfo(receiptInfo: ReceiptInfo, toDataStore: boolean): ReceiptInfo
+	local function convertReceiptInfo(receiptInfo: GiftReceiptInfo, toDataStore: boolean): GiftReceiptInfo
 		if toDataStore then
 			for i,v in receiptInfo do
 				if typeof(v) == "EnumItem" then
@@ -192,7 +205,7 @@ if IsServer then
 	--ProductId shouldn't be the gift Id.
 	local Functions = {}
 
-	function GiftService:CreateReceipt(productId: number, f: (receiptInfo: ReceiptInfo) -> Enum.ProductPurchaseDecision)
+	function GiftService:CreateReceipt(productId: number, f: (giftReceiptInfo: GiftReceiptInfo) -> Enum.ProductPurchaseDecision)
 		assert(productId ~= nil, "Argument 1 is nil")
 		assert(f ~= nil, "Argument 2 is nil")
 		assert(IsServer, "CreateReceipt can only be called from the server")
