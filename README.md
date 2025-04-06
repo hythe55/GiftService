@@ -2,7 +2,7 @@
 Adds support for users to gift gamepasses and products to other users. Automatically saves when a user purchases a gamepass or is gifted one to avoid repeat purchases.
 
 ## Important Information
-All `MarketplaceService:UserOwnsGamePassAsync()` calls should be replaced with `GiftService:UserOwnsGamePassAsync()`. `GiftService:UserOwnsGamePassAsync()` will return true if the player either owns the gamepass or has been gifted the gamepass using GiftService. See Methods > UserOwnsGamePassAsync for more information
+All `MarketplaceService:UserOwnsGamePassAsync()` calls should be replaced with `GiftService:UserOwnsGamePassAsync()`. `GiftService:UserOwnsGamePassAsync()` will return true if the player either owns the gamepass or has been gifted the gamepass using GiftService. See `Methods > UserOwnsGamePassAsync` for more information
 
 ## Methods
 ### PromptProductGift
