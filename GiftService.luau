@@ -163,6 +163,7 @@ if IsServer then
 	local DataSaveService = require(ReplicatedStorage.Services.DataSaveService)
 	local profileStore = DataSaveService:GetProfileStore()
 	DataSaveService:AddToTemplate("Gifting_OwnedGamepasses", {})
+	print(DataSaveService:GetTemplate())
 	
 	local function convertReceiptInfo(receiptInfo: GiftReceiptInfo, toDataStore: boolean): GiftReceiptInfo
 		if toDataStore then
@@ -299,8 +300,7 @@ if IsServer then
 	end)
 
 	--Removing attributes if they cancel the prompt instead of purchasing
-	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(userId, _, wasPurchased) --might need to change this a bit to be like products
-		local player = Players:GetPlayerByUserId(userId)
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, _, wasPurchased) --might need to change this a bit to be like products
 		if player then
 			player:SetAttribute("Gifting_PlayerToGift", nil)
 			player:SetAttribute("Gifting_CurrentGiftId", nil)
@@ -364,9 +364,10 @@ if IsServer then
 		if MarketplaceService:UserOwnsGamePassAsync(userId, gamePassId) == true then
 			return true
 		end
-		local profile = profileStore:GetAsync(DataSaveService:GetProfileKey(userId))
+		local player = Players:GetPlayerByUserId(userId)
+		local profile = player and DataSaveService:GetProfile(player) or profileStore:GetAsync(DataSaveService:GetProfileKey(userId))
 		if profile then
-			if table.find(profile.Data.Gifting_OwnedGamepasses) then
+			if table.find(profile.Data.Gifting_OwnedGamepasses, gamePassId) then
 				return true
 			end
 		end
