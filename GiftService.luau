@@ -61,6 +61,25 @@ type GamePassGifted = {
 	ConnectParallel: (self: GamePassGifted, (player: Player, playerGiftedId: number, gamePassId: number) -> ()) -> RBXScriptConnection
 }
 
+--Server sided checks for gamepass ownership
+local function userOwnsGamePassAsync(userId: number, gamePassId: number)
+	local DataSaveService = require(ReplicatedStorage.Services.DataSaveService)
+	local profileStore = DataSaveService:GetProfileStore()
+	local player = Players:GetPlayerByUserId(userId)
+	local profile = player and DataSaveService:GetProfile(player) or profileStore:GetAsync(DataSaveService:GetProfileKey(userId))
+	if profile then
+		if table.find(profile.Data.Gifting_OwnedGamepasses, gamePassId) then
+			return true
+		end
+	end
+	return false
+end
+if IsServer then
+	script.Communication.UserOwnsGamePassAsync.OnServerInvoke = function(player, ...)
+		return userOwnsGamePassAsync(...)
+	end
+end
+
 --[[Prompts the Product gifting gui to the given <strong>player</strong>.
 <strong>productId</strong> should not the the ProductId of the gift product.]]
 function GiftService:PromptProductGift(player: Player, productId: number)
@@ -158,12 +177,24 @@ function GiftService:GetGamePassIdFromGiftId(giftId: number)
 	return getAssetId(giftId, Enum.InfoType.GamePass)
 end
 
+--Returns true if the player with the given UserId owns the pass with the given gamePassId.
+function GiftService:UserOwnsGamePassAsync(userId: number, gamePassId: number): boolean
+	print(userId, gamePassId)
+	if MarketplaceService:UserOwnsGamePassAsync(userId, gamePassId) == true then
+		return true
+	end
+	if IsServer then
+		return userOwnsGamePassAsync(userId, gamePassId)
+	else
+		return script.Communication.UserOwnsGamePassAsync:InvokeServer(userId, gamePassId)
+	end
+end
+
 --Handles PromptProductGift and PromptGamePassGift being fired from the client
 if IsServer then
 	local DataSaveService = require(ReplicatedStorage.Services.DataSaveService)
 	local profileStore = DataSaveService:GetProfileStore()
 	DataSaveService:AddToTemplate("Gifting_OwnedGamepasses", {})
-	print(DataSaveService:GetTemplate())
 	
 	local function convertReceiptInfo(receiptInfo: GiftReceiptInfo, toDataStore: boolean): GiftReceiptInfo
 		if toDataStore then
@@ -359,20 +390,7 @@ if IsServer then
 	end
 
 	--MarketplaceService.ProcessReceipt = script.Events.ProcessReceipt
-	--Returns true if the player with the given UserId owns the pass with the given gamePassId.
-	function GiftService:UserOwnsGamePassAsync(userId: number, gamePassId: number): boolean
-		if MarketplaceService:UserOwnsGamePassAsync(userId, gamePassId) == true then
-			return true
-		end
-		local player = Players:GetPlayerByUserId(userId)
-		local profile = player and DataSaveService:GetProfile(player) or profileStore:GetAsync(DataSaveService:GetProfileKey(userId))
-		if profile then
-			if table.find(profile.Data.Gifting_OwnedGamepasses, gamePassId) then
-				return true
-			end
-		end
-		return false
-	end
+	
 	GiftService.GamePassGifted = script.Events.GamePassGifted.Event:: GamePassGifted
 end
 
